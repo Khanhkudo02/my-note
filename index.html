@@ -1,12 +1,37 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trang Web Của Tôi</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sổ tay môn học</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
-<body style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f4f4f9;">
-    <h1>Chào mừng đến với trang web của tôi!</h1>
-    <p>Trang web này được tạo và chạy trực tiếp từ điện thoại.</p>
+<body>
+<aside id="sidebar">
+  <div class="brand">Sổ tay môn học</div>
+  <button class="btn primary" id="addSubject">+ Thêm môn học</button>
+  <nav id="subjectList" aria-label="Danh sách môn học"></nav>
+  <div class="side-foot">
+    <button class="btn ghost" id="exportBtn">Xuất file</button>
+    <button class="btn ghost" id="importBtn">Nhập file</button>
+    <input type="file" id="importFile" accept="application/json" hidden>
+  </div>
+</aside>
+
+<main id="main">
+  <header class="topbar">
+    <button class="btn ghost menu" id="menuBtn" aria-label="Mở danh sách môn">☰</button>
+    <h1 id="subjectTitle"></h1>
+    <div class="top-actions" id="topActions">
+      <input type="search" id="search" placeholder="Tìm chủ đề, nội dung…">
+      <button class="btn ghost" id="editSubject">Sửa tên</button>
+      <button class="btn primary" id="addTopic">+ Thêm chủ đề</button>
+    </div>
+  </header>
+  <section id="topics"></section>
+</main>
+<script src="script.js"></script>
 </body>
 </html>
