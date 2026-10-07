@@ -67,12 +67,10 @@ button,input{font:inherit;color:inherit}
 .line.head::before{content:"•";color:var(--acc-t)}
 .line.head .text{color:var(--acc-t);font-weight:700;text-transform:uppercase;letter-spacing:.02em}
 .group{border-left:3px solid var(--line);margin:2px 0 0 4px;padding-left:10px}
-.line .chk{margin-top:7px;flex:none;accent-color:var(--acc)}
 .line .text{flex:1;min-width:0;padding:2px 6px;border-radius:6px;outline:none;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text)}
 .line .text b{color:#fff;font-weight:600}
 .line .text:hover{background:rgba(255,255,255,.04)}
 .line .text:focus{background:rgba(129,140,248,.14)}
-.line.done .text{text-decoration:line-through;opacity:.55}
 .line .acts{display:flex;opacity:0;gap:1px}
 .line:hover .acts,.line:focus-within .acts{opacity:1}
 .acts button{border:0;background:none;cursor:pointer;padding:2px 6px;border-radius:6px;color:var(--muted);font-size:.85rem}
@@ -83,6 +81,16 @@ button,input{font:inherit;color:inherit}
 .add-line{border:1px dashed var(--line);background:none;border-radius:10px;padding:5px 12px;color:var(--muted);cursor:pointer}
 .add-line:hover{border-color:var(--acc);color:var(--acc-t)}
 .hint{color:var(--muted);font-size:.78rem;margin-top:8px}
+
+/* Highlight */
+.line .text span[style]{color:#12142a;border-radius:3px;padding:0 2px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.line .text span[style] b{color:inherit}
+#pal{position:fixed;z-index:40;display:flex;flex-wrap:wrap;gap:8px;width:224px;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#pal[hidden]{display:none}
+.sw{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.25);cursor:pointer;padding:0}
+.sw:hover{border-color:#fff}
+.sw.none{background:transparent;color:var(--muted);font-size:1.1rem;line-height:1}
+.pal-hint{flex-basis:100%;color:var(--muted);font-size:.75rem;line-height:1.4}
 
 /* Hộp xác nhận */
 dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:22px;max-width:380px;width:calc(100% - 40px)}
