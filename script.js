@@ -147,18 +147,41 @@ function topicEl(s, t, idx) {
       h('button', { class: 'add-line', text: '+ Thêm dòng', onclick: () => addLine(t, t.lines.length - 1) }),
       h('button', { class: 'add-line', text: '+ Thêm tiêu đề mục', onclick: () => addLine(t, t.lines.length - 1, 0, true) })
     ),
-    h('div', { class: 'hint', text: 'Enter: dòng mới · Tab / Shift+Tab: thụt vào / lùi ra · Ctrl+B: in đậm · Nút H: đổi dòng thành tiêu đề mục' })
+    h('div', { class: 'hint', text: 'Enter: dòng mới · Tab / Shift+Tab: thụt vào / lùi ra · Ctrl+B: in đậm · Nút 🖍: highlight · Nút H: đổi dòng thành tiêu đề mục' })
   );
   el.append(body);
   return el;
 }
 
 /* ---------- Dòng nội dung ---------- */
-const clean = el => el.innerHTML.replace(/<(\/?)strong>/gi, '<$1b>').replace(/<(?!\/?b>)[^>]*>/gi, '').replace(/&nbsp;/g, ' ');
+const RGB = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*([\d.]+))?\s*\)$/i;
+function bgOf(el) {
+  const v = el.style.backgroundColor;
+  if (!v || v === 'transparent') return null;
+  const m = RGB.exec(v);
+  if (m) return (m[4] !== undefined && +m[4] === 0) ? null : '#' + [1, 2, 3].map(i => Math.min(255, +m[i]).toString(16).padStart(2, '0')).join('');
+  return /^#[0-9a-f]{6}$/i.test(v) ? v : null;
+}
+function sanitize(node) {
+  let out = '';
+  node.childNodes.forEach(c => {
+    if (c.nodeType === 3) out += c.textContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\u00a0/g, ' ');
+    else if (c.nodeType === 1) {
+      const tag = c.tagName.toLowerCase(), inner = sanitize(c);
+      const bold = tag === 'b' || tag === 'strong' || (tag === 'span' && /^(bold|[6-9]00)$/.test(c.style.fontWeight));
+      const bg = bgOf(c);
+      let r = inner;
+      if (bg && inner) r = `<span style="background-color:${bg}">${r}</span>`;
+      if (bold && inner) r = `<b>${r}</b>`;
+      out += r;
+    }
+  });
+  return out;
+}
 function lineEl(t, l) {
   const text = h('div', { class: 'text', contenteditable: 'true', spellcheck: 'false', 'data-id': l.id, role: 'textbox', 'aria-label': l.head ? 'Tiêu đề mục' : 'Nội dung' });
   if (l.html) text.innerHTML = l.html; else text.textContent = l.text;
-  text.addEventListener('input', () => { l.html = clean(text); l.text = text.textContent; save(); });
+  text.addEventListener('input', () => { l.html = sanitize(text); l.text = text.textContent; save(); });
   text.addEventListener('paste', e => { e.preventDefault(); document.execCommand('insertText', false, e.clipboardData.getData('text/plain').replace(/\n/g, ' ')); });
   text.addEventListener('keydown', e => {
     const i = t.lines.indexOf(l);
@@ -173,12 +196,12 @@ function lineEl(t, l) {
     }
   });
   const act = (title, label, fn, cls = '') => h('button', { class: cls, title, 'aria-label': title, text: label, onmousedown: e => e.preventDefault(), onclick: fn });
-  return h('div', { class: 'line ' + (l.head ? 'head' : 'item') + (l.done ? ' done' : ''), style: `--i:${l.indent}` },
-    l.head ? null : h('input', { type: 'checkbox', class: 'chk', 'aria-label': 'Đánh dấu đã học', ...(l.done ? { checked: '' } : {}), onchange: e => { l.done = e.target.checked; save(); render(); } }),
+  return h('div', { class: 'line ' + (l.head ? 'head' : 'item'), style: `--i:${l.indent}` },
     text,
     h('div', { class: 'acts' },
       act('Đổi giữa tiêu đề mục và dòng thường', 'H', () => { l.head = !l.head; if (l.head) l.indent = 0; focusId = l.id; save(); render(); }),
       act('In đậm phần đang chọn (Ctrl+B)', 'B', () => { text.focus(); document.execCommand('bold'); }, 'bold'),
+      act('Highlight chữ (chọn màu)', '🖍', e => openPalette(e.currentTarget, text), 'hlbtn'),
       act('Lùi ra (Shift+Tab)', '⇤', () => setIndent(t, l, l.indent - 1)),
       act('Thụt vào (Tab)', '⇥', () => setIndent(t, l, l.indent + 1)),
       act('Xoá dòng', '✕', () => deleteLine(t, l), 'del')
@@ -205,8 +228,42 @@ async function deleteLine(t, l) {
   save(); render();
 }
 
+/* ---------- Highlight chữ ---------- */
+const HL = [['#fde047', 'Vàng'], ['#86efac', 'Xanh lá'], ['#f9a8d4', 'Hồng'], ['#93c5fd', 'Xanh dương'], ['#fdba74', 'Cam'], ['#c4b5fd', 'Tím']];
+let palTarget = null;
+const noDown = e => e.preventDefault();
+const pal = h('div', { id: 'pal', role: 'menu', hidden: '' },
+  HL.map(([c, n]) => h('button', { class: 'sw', style: `background:${c}`, title: n, 'aria-label': 'Highlight ' + n, onmousedown: noDown, onclick: () => applyHl(c) })),
+  h('button', { class: 'sw none', title: 'Bỏ highlight', 'aria-label': 'Bỏ highlight', text: '⊘', onmousedown: noDown, onclick: () => applyHl(null) }),
+  h('div', { class: 'pal-hint', text: 'Bôi đen chữ cần tô. Không bôi đen thì tô cả dòng.' })
+);
+document.body.append(pal);
+function closePal() { pal.hidden = true; palTarget = null; }
+function openPalette(btn, text) {
+  if (!pal.hidden && palTarget === text) return closePal();
+  palTarget = text; pal.hidden = false;
+  const r = btn.getBoundingClientRect();
+  pal.style.left = Math.max(8, Math.min(r.left, innerWidth - pal.offsetWidth - 8)) + 'px';
+  pal.style.top = (r.bottom + pal.offsetHeight + 12 > innerHeight ? r.top - pal.offsetHeight - 6 : r.bottom + 6) + 'px';
+}
+function applyHl(color) {
+  const text = palTarget; if (!text) return;
+  text.focus();
+  const sel = getSelection();
+  if (!sel.rangeCount || sel.isCollapsed || !text.contains(sel.anchorNode)) {
+    const r = document.createRange(); r.selectNodeContents(text); sel.removeAllRanges(); sel.addRange(r);
+  }
+  document.execCommand('styleWithCSS', false, true);
+  document.execCommand('hiliteColor', false, color || 'transparent');
+  document.execCommand('styleWithCSS', false, false);
+  closePal();
+}
+document.addEventListener('pointerdown', e => { if (!pal.hidden && !pal.contains(e.target) && !e.target.closest('.hlbtn')) closePal(); });
+document.addEventListener('scroll', () => { if (!pal.hidden) closePal(); }, true);
+
 /* ---------- Khung chính ---------- */
 function render() {
+  closePal();
   renderSidebar();
   const s = current();
   document.getElementById('subjectTitle').textContent = s ? s.name : 'Sổ tay môn học';
