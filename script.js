@@ -131,14 +131,23 @@ function topicEl(s, t, idx) {
   const body = h('div', { class: 'topic-body' },
     h('div', { class: 'tools' },
       h('button', { class: 'dot', title: 'Đổi màu chủ đề', 'aria-label': 'Đổi màu chủ đề', onclick: () => { t.color = COLORS[(COLORS.indexOf(t.color) + 1) % COLORS.length]; save(); render(); } }),
+      (() => {
+        const hl = t.lines.filter(x => /<span/.test(x.html || ''));
+        if (!hl.length) return null;
+        const un = hl.some(x => !x.cover);
+        return h('button', { class: 'btn', text: un ? 'Che highlight' : 'Hiện highlight', onclick: () => { hl.forEach(x => x.cover = un); save(); render(); } });
+      })(),
       h('button', { class: 'btn', text: 'Thẻ', onclick: () => { const v = prompt('Thẻ cho chủ đề (để trống để bỏ thẻ):', t.tag || ''); if (v !== null) { t.tag = v.trim(); save(); render(); } } }),
       h('button', { class: 'btn', text: 'Sửa tên', onclick: () => { const v = (prompt('Sửa tên chủ đề:', t.title) || '').trim(); if (v) { t.title = v; save(); render(); } } }),
       h('button', { class: 'btn danger', text: 'Xoá chủ đề', onclick: async () => { if (await ask(`Xoá chủ đề “${t.title}” cùng toàn bộ nội dung?`)) { s.topics = s.topics.filter(x => x !== t); save(); render(); } } })
     )
   );
   const lines = h('div', { class: 'lines' });
-  let grp = null;
-  t.lines.forEach(l => {
+  let grp = null, skipUntil = -1;
+  t.lines.forEach((l, i) => {
+    if (i <= skipUntil) return;
+    const kids = kidsOf(t, l);
+    if (l.fold && kids.length) skipUntil = i + kids.length;
     if (l.head) { grp = null; lines.append(lineEl(t, l)); }
     else { if (!grp) { grp = h('div', { class: 'group' }); lines.append(grp); } grp.append(lineEl(t, l)); }
   });
@@ -147,13 +156,22 @@ function topicEl(s, t, idx) {
       h('button', { class: 'add-line', text: '+ Thêm dòng', onclick: () => addLine(t, t.lines.length - 1) }),
       h('button', { class: 'add-line', text: '+ Thêm tiêu đề mục', onclick: () => addLine(t, t.lines.length - 1, 0, true) })
     ),
-    h('div', { class: 'hint', text: 'Enter: dòng mới · Tab / Shift+Tab: thụt vào / lùi ra · Ctrl+B: in đậm · Nút 🖍: highlight · Nút H: đổi dòng thành tiêu đề mục' })
+    h('div', { class: 'hint', text: 'Enter: dòng mới · Tab / Shift+Tab: thụt vào / lùi ra · Ctrl+B: in đậm · Nút 🖍: highlight · Nút H: đổi dòng thành tiêu đề mục · Bấm › để đóng/mở các dòng bên dưới' })
   );
   el.append(body);
   return el;
 }
 
 /* ---------- Dòng nội dung ---------- */
+function kidsOf(t, l) {
+  const i = t.lines.indexOf(l), out = [];
+  for (let j = i + 1; j < t.lines.length; j++) {
+    const x = t.lines[j];
+    if (l.head ? x.head : (x.head || x.indent <= l.indent)) break;
+    out.push(x);
+  }
+  return out;
+}
 const RGB = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*([\d.]+))?\s*\)$/i;
 function bgOf(el) {
   const v = el.style.backgroundColor;
@@ -187,7 +205,7 @@ function lineEl(t, l) {
     const i = t.lines.indexOf(l);
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') { e.preventDefault(); document.execCommand('bold'); }
     else if (e.key === 'Tab') { e.preventDefault(); setIndent(t, l, l.indent + (e.shiftKey ? -1 : 1)); }
-    else if (e.key === 'Enter') { e.preventDefault(); addLine(t, i, l.head ? 0 : l.indent); }
+    else if (e.key === 'Enter') { e.preventDefault(); addLine(t, i + (l.fold ? kidsOf(t, l).length : 0), l.head ? 0 : l.indent); }
     else if (e.key === 'Backspace' && !text.textContent && t.lines.length > 1) {
       e.preventDefault();
       t.lines.splice(i, 1);
@@ -196,12 +214,24 @@ function lineEl(t, l) {
     }
   });
   const act = (title, label, fn, cls = '') => h('button', { class: cls, title, 'aria-label': title, text: label, onmousedown: e => e.preventDefault(), onclick: fn });
-  return h('div', { class: 'line ' + (l.head ? 'head' : 'item'), style: `--i:${l.indent}` },
+  const kids = kidsOf(t, l), folded = !!(l.fold && kids.length);
+  text.addEventListener('click', e => {
+    if (!l.cover) return;
+    const sp = e.target.closest && e.target.closest('span[style]');
+    if (sp && text.contains(sp)) sp.classList.toggle('show');
+  });
+  return h('div', { class: 'line ' + (l.head ? 'head' : 'item') + (l.cover ? ' cover' : ''), style: `--i:${l.indent}` },
+    h('button', {
+      class: 'tg' + (kids.length ? '' : ' none') + (folded ? ' closed' : ''), text: '›', tabindex: kids.length ? '0' : '-1',
+      'aria-label': folded ? 'Mở các dòng bên dưới' : 'Đóng các dòng bên dưới', 'aria-expanded': String(!folded),
+      onclick: () => { if (kids.length) { l.fold = !l.fold; save(); render(); } }
+    }),
     text,
+    folded ? h('span', { class: 'cnt', text: '+' + kids.length }) : null,
     h('div', { class: 'acts' },
       act('Đổi giữa tiêu đề mục và dòng thường', 'H', () => { l.head = !l.head; if (l.head) l.indent = 0; focusId = l.id; save(); render(); }),
       act('In đậm phần đang chọn (Ctrl+B)', 'B', () => { text.focus(); document.execCommand('bold'); }, 'bold'),
-      act('Highlight chữ (chọn màu)', '🖍', e => openPalette(e.currentTarget, text), 'hlbtn'),
+      act('Highlight chữ (chọn màu)', '🖍', e => openPalette(e.currentTarget, text, l), 'hlbtn'),
       act('Lùi ra (Shift+Tab)', '⇤', () => setIndent(t, l, l.indent - 1)),
       act('Thụt vào (Tab)', '⇥', () => setIndent(t, l, l.indent + 1)),
       act('Xoá dòng', '✕', () => deleteLine(t, l), 'del')
@@ -230,18 +260,20 @@ async function deleteLine(t, l) {
 
 /* ---------- Highlight chữ ---------- */
 const HL = [['#fde047', 'Vàng'], ['#86efac', 'Xanh lá'], ['#f9a8d4', 'Hồng'], ['#93c5fd', 'Xanh dương'], ['#fdba74', 'Cam'], ['#c4b5fd', 'Tím']];
-let palTarget = null;
+let palTarget = null, palLine = null;
 const noDown = e => e.preventDefault();
 const pal = h('div', { id: 'pal', role: 'menu', hidden: '' },
   HL.map(([c, n]) => h('button', { class: 'sw', style: `background:${c}`, title: n, 'aria-label': 'Highlight ' + n, onmousedown: noDown, onclick: () => applyHl(c) })),
   h('button', { class: 'sw none', title: 'Bỏ highlight', 'aria-label': 'Bỏ highlight', text: '⊘', onmousedown: noDown, onclick: () => applyHl(null) }),
+  h('button', { class: 'pal-cover', onmousedown: noDown, onclick: () => { if (palLine) { palLine.cover = !palLine.cover; save(); render(); } } }),
   h('div', { class: 'pal-hint', text: 'Bôi đen chữ cần tô. Không bôi đen thì tô cả dòng.' })
 );
 document.body.append(pal);
 function closePal() { pal.hidden = true; palTarget = null; }
-function openPalette(btn, text) {
+function openPalette(btn, text, l) {
   if (!pal.hidden && palTarget === text) return closePal();
-  palTarget = text; pal.hidden = false;
+  palTarget = text; palLine = l; pal.hidden = false;
+  pal.querySelector('.pal-cover').textContent = l.cover ? '👁 Hiện chữ highlight' : '🙈 Che chữ highlight';
   const r = btn.getBoundingClientRect();
   pal.style.left = Math.max(8, Math.min(r.left, innerWidth - pal.offsetWidth - 8)) + 'px';
   pal.style.top = (r.bottom + pal.offsetHeight + 12 > innerHeight ? r.top - pal.offsetHeight - 6 : r.bottom + 6) + 'px';
@@ -270,6 +302,10 @@ function render() {
   document.getElementById('topActions').style.display = s ? '' : 'none';
   const anyOpen = !!s && s.topics.some(t => t.open);
   document.getElementById('foldAll').textContent = anyOpen ? 'Thu gọn tất cả' : 'Mở tất cả';
+  const hlAll = s ? s.topics.flatMap(t => t.lines).filter(x => /<span/.test(x.html || '')) : [];
+  const cb = document.getElementById('coverAll');
+  cb.textContent = hlAll.some(x => !x.cover) ? 'Che highlight' : 'Hiện highlight';
+  cb.style.display = hlAll.length ? '' : 'none';
   renderTopics();
   if (focusId) {
     const el = document.querySelector(`[data-id="${focusId}"]`);
@@ -290,6 +326,13 @@ document.getElementById('foldAll').onclick = () => {
   const s = current(); if (!s) return;
   const anyOpen = s.topics.some(t => t.open);
   s.topics.forEach(t => t.open = !anyOpen);
+  save(); render();
+};
+document.getElementById('coverAll').onclick = () => {
+  const s = current(); if (!s) return;
+  const hl = s.topics.flatMap(t => t.lines).filter(x => /<span/.test(x.html || ''));
+  const un = hl.some(x => !x.cover);
+  hl.forEach(x => x.cover = un);
   save(); render();
 };
 document.getElementById('editSubject').onclick = () => current() && renameSubject(current());
