@@ -60,7 +60,6 @@ button,input{font:inherit;color:inherit}
 .dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);background:var(--acc);cursor:pointer}
 
 /* Lines */
-.line{display:flex;align-items:flex-start;gap:6px;padding-left:calc(var(--i)*26px)}
 .line.head{margin-top:14px;padding-left:0}
 .line.head .text{color:var(--acc-t);font-weight:700;text-transform:uppercase;letter-spacing:.02em}
 .group{border-left:3px solid var(--line);margin:2px 0 0 4px;padding-left:10px}
@@ -68,8 +67,6 @@ button,input{font:inherit;color:inherit}
 .line .text b{color:#fff;font-weight:600}
 .line .text:hover{background:rgba(255,255,255,.04)}
 .line .text:focus{background:rgba(129,140,248,.14)}
-.line .acts{display:flex;opacity:0;gap:1px}
-.line:hover .acts,.line:focus-within .acts{opacity:1}
 .acts button{border:0;background:none;cursor:pointer;padding:2px 6px;border-radius:6px;color:var(--muted);font-size:.85rem}
 .acts button:hover{background:rgba(255,255,255,.1);color:#fff}
 .acts .bold{font-weight:800}
@@ -79,18 +76,18 @@ button,input{font:inherit;color:inherit}
 .add-line:hover{border-color:var(--acc);color:var(--acc-t)}
 .hint{color:var(--muted);font-size:.78rem;margin-top:8px}
 
-/* Mũi tên đóng/mở */
-.tg{flex:none;width:22px;height:32px;border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.25rem;line-height:1.7;padding:0;transition:transform .15s}
-.tg:not(.none):not(.closed){transform:rotate(90deg);color:var(--text)}
-.tg.none{opacity:.45;pointer-events:none}
+/* Dòng: mũi tên, công cụ, thu gọn */
+.line{display:flex;flex-wrap:wrap;align-items:flex-start;gap:0 4px;padding-left:calc(var(--i)*26px)}
+.tg{flex:none;width:24px;height:32px;border:0;background:none;color:var(--text);cursor:pointer;font-size:1.25rem;line-height:1.7;padding:0;transform:rotate(90deg);transition:transform .15s}
+.tg.closed{transform:none;color:var(--muted)}
 .line.head .tg{color:var(--acc-t)}
+.line.folded .text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
 .cnt{flex:none;align-self:center;font-size:.75rem;color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:0 8px}
-
-/* Che chữ highlight */
-.line.cover .text span[style]{color:transparent;cursor:pointer;-webkit-user-select:none;user-select:none}
-.line.cover .text span[style].show{color:#12142a;-webkit-user-select:text;user-select:text}
-.pal-cover{flex-basis:100%;border:1px solid var(--line);background:transparent;border-radius:10px;padding:7px;cursor:pointer;color:var(--ink)}
-.pal-cover:hover{border-color:#818cf8}
+.more{flex:none;border:0;background:none;color:var(--muted);cursor:pointer;padding:0 8px;line-height:1.9;border-radius:8px;font-size:1.1rem}
+.more:hover,.line.tools .more{color:#fff;background:rgba(255,255,255,.12)}
+.line .acts{display:none;flex-basis:100%;gap:4px;margin:2px 0 8px 28px;opacity:1}
+.line.tools .acts{display:flex}
+.acts button{padding:5px 12px;font-size:1rem}
 
 /* Highlight */
 .line .text span[style]{color:#12142a;border-radius:3px;padding:0 2px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
@@ -117,6 +114,5 @@ dialog .row{display:flex;justify-content:flex-end;gap:10px}
   #topics{padding:16px 12px 80px}
   .topic-head{padding:12px 14px;gap:10px}
   .topic-body{padding:10px 12px 16px}
-  .line .acts{opacity:1}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
